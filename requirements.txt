@@ -1,2 +1,2 @@
-python-telegram-bot==22.7
-googletrans==4.0.2
+python-telegram-bot==22.0
+deep-translator==1.11.4

@@ -1,11 +1,9 @@
 import os
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 
 TOKEN = os.getenv("BOT_TOKEN")
-
-translator = Translator()
 user_direction = {}
 
 buttons = [
@@ -65,10 +63,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     src_lang, dest_lang = LANG_MAP[user_direction[user_id]]
 
     try:
-        result = await translator.translate(text, src=src_lang, dest=dest_lang)
-        await update.message.reply_text(
-            f"Tarjima natijasi:\n\n{result.text}"
-        )
+        result = GoogleTranslator(source=src_lang, target=dest_lang).translate(text)
+        await update.message.reply_text(f"Tarjima natijasi:\n\n{result}")
     except Exception as e:
         print("Xatolik:", e)
         await update.message.reply_text(
