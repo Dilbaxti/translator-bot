@@ -25,11 +25,24 @@ LANG_MAP = {
     "TR -> UZ": ("tr", "uz"),
 }
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Assalomu alaykum!\n\nTarjima yo'nalishini tanlang:",
+        "Assalomu alaykum!\n\n"
+        "Men tarjimon botman.\n"
+        "Tarjima yo'nalishini tanlang:",
         reply_markup=reply_keyboard
     )
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Foydalanish tartibi:\n"
+        "1. Tarjima yo'nalishini tanlang\n"
+        "2. Matn yuboring\n"
+        "3. Men tarjima qilib beraman"
+    )
+
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -53,10 +66,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         result = await translator.translate(text, src=src_lang, dest=dest_lang)
-        await update.message.reply_text(f"Tarjima natijasi:\n\n{result.text}")
+        await update.message.reply_text(
+            f"Tarjima natijasi:\n\n{result.text}"
+        )
     except Exception as e:
         print("Xatolik:", e)
-        await update.message.reply_text("Tarjima qilishda xatolik yuz berdi.")
+        await update.message.reply_text(
+            "Tarjima qilishda xatolik yuz berdi. Qayta urinib ko'ring."
+        )
+
 
 def main():
     if not TOKEN:
@@ -65,10 +83,12 @@ def main():
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     print("Tarjimon bot ishga tushdi...")
     app.run_polling()
+
 
 if __name__ == "__main__":
     main()
