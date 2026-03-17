@@ -1,9 +1,14 @@
 import os
+import asyncio
+from flask import Flask, request
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from deep_translator import GoogleTranslator
 
 TOKEN = os.getenv("BOT_TOKEN")
+PORT = int(os.getenv("PORT", "10000"))
+RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL")
+
 user_direction = {}
 
 buttons = [
@@ -22,6 +27,9 @@ LANG_MAP = {
     "EN -> UZ": ("en", "uz"),
     "TR -> UZ": ("tr", "uz"),
 }
+
+flask_app = Flask(__name__)
+ptb_app = Application.builder().token(TOKEN).build()
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -43,6 +51,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
+
     user_id = update.message.from_user.id
     text = update.message.text.strip()
 
@@ -72,19 +83,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-def main():
-    if not TOKEN:
-        raise ValueError("BOT_TOKEN topilmadi")
+ptb_app.add_handler(CommandHandler("start", start))
+ptb_app.add_handler(CommandHandler("help", help_command))
+ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    app = Application.builder().token(TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+@flask_app.route("/", methods=["GET"])
+def home():
+    return "Bot is running", 200
 
-    print("Tarjimon bot ishga tushdi...")
-    app.run_polling()
+
+@flask_app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    data = request.get_json(force=True)
+    update = Update.de_json(data, ptb_app.bot)
+    asyncio.run(ptb_app.process_update(update))
+    return "ok", 200
+
+
+async def setup():
+    await ptb_app.initialize()
+    await ptb_app.start()
+    webhook_url = f"{RENDER_EXTERNAL_URL}/{TOKEN}"
+    await ptb_app.bot.set_webhook(webhook_url)
+    print(f"Webhook set: {webhook_url}")
 
 
 if __name__ == "__main__":
-    main()
+    if not TOKEN:
+        raise ValueError("BOT_TOKEN topilmadi")
+    if not RENDER_EXTERNAL_URL:
+        raise ValueError("RENDER_EXTERNAL_URL topilmadi")
+
+    asyncio.run(setup())
+    flask_app.run(host="0.0.0.0", port=PORT)
